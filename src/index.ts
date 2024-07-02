@@ -92,17 +92,26 @@ app.get("/feed/:username", async (c) => {
     link: BASE_URL,
     pubDate: new Date(),
     items: videos.map(
-      ({ id, title, description, url, duration, thumbnail, channel }) => ({
+      ({
+        id,
+        title,
+        description,
+        url,
+        duration,
+        thumbnail,
+        channel,
+        length,
+      }) => ({
         title,
         subtitle: "subtitle - todo remove it",
         description,
         link: url,
         pubDate: new Date(),
-        audioUrl: `${BASE_URL}/audio/${id}`,
-        length: 1000, // TODO
         image: thumbnail,
         author: channel,
+        audioUrl: `${BASE_URL}/audio/${id}`,
         duration,
+        length,
       }),
     ),
   });

@@ -21,6 +21,7 @@ export async function extractMetadata(uri: string) {
   return JSON.parse(
     // -s for simulate
     // -j for json
+    // -f ba for best audio
 
     await $`yt-dlp -f ba -s -j ${uri}`.text(),
   ) as YtDlpMetadataResult;
