@@ -1,0 +1,19 @@
+{
+  "name": "podtube",
+  "module": "./src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch run ./src/index.ts ",
+    "start": "bun run ./src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "date-fns": "^3.6.0",
+    "hono": "^4.4.10"
+  }
+}
