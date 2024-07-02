@@ -28,8 +28,8 @@ WORKDIR /app
 # Copy your application files into the container
 COPY . .
 
-# Install application dependencies if any
+# Install application dependencies
 RUN bun install
 
 # Default command to keep container running
-CMD ["tail", "-f", "/dev/null"]
+CMD ["bun", "run", "start"]
