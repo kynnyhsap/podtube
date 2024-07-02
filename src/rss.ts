@@ -2,6 +2,24 @@ import { format } from "date-fns";
 
 const toRFC2822 = (d: Date) => format(d, "EEE, dd MMM yyyy HH:mm:ss X");
 
+function formatDuration(duration: number): string {
+  const hours = Math.floor(duration / 3600);
+  const remainingSeconds = duration % 3600;
+  const minutes = Math.floor(remainingSeconds / 60);
+  const secs = remainingSeconds % 60;
+
+  const formattedMinutes =
+    minutes > 0 ? `${hours > 0 ? minutes : minutes}` : "0";
+
+  const formattedSeconds = secs < 10 && minutes > 0 ? `0${secs}` : `${secs}`;
+
+  if (hours > 0) {
+    return `${hours}:${formattedMinutes}:${formattedSeconds}`;
+  } else {
+    return `${minutes}:${formattedSeconds}`;
+  }
+}
+
 export type RssItem = {
   title: string;
   description: string;
@@ -12,9 +30,9 @@ export type RssItem = {
   length: number;
   image: string;
   author: string;
+  duration: number;
 };
 
-// TODO: correct value for itunes:duration
 // TODO: add chapters <podcast:chapters url="${chaptersUrl}" type="application/json+chapters"/>
 const buildRssItem = ({
   title,
@@ -26,6 +44,7 @@ const buildRssItem = ({
   length,
   image,
   author,
+  duration,
 }: RssItem) => `
 <item>
     <title>${title}</title>
@@ -41,16 +60,13 @@ const buildRssItem = ({
 	  <itunes:explicit>no</itunes:explicit>
     <itunes:image href="${image}"/>
     <itunes:subtitle>${subtitle}</itunes:subtitle>
-	  <itunes:duration>1:50</itunes:duration>
-    <itunes:summary>Summary</itunes:summary>
+	  <itunes:duration>${formatDuration(duration)}</itunes:duration>
+    <itunes:summary>${""}</itunes:summary>
     <itunes:author>${author}</itunes:author>
 </item>
 `;
 
-const keywords = [
-  "youtube",
-  // ...
-];
+const keywords = ["youtube", "podtube"];
 
 export const buildRss = ({
   title,
