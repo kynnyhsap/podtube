@@ -2,11 +2,14 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { buildRss } from "./rss";
 import { serveStatic } from "hono/bun";
-import { extractMetadata } from "./yt-dlp";
 import { HTTPException } from "hono/http-exception";
 import { db } from "./db";
 import { Users, UserVideos, Videos } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { extractMetadata } from "./extract-metadata";
+import { dowloadAudio } from "./download-audio";
+import { uploadAudio } from "./upload-audio";
+import { streamAudio } from "./stream-audio";
 
 const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -17,7 +20,7 @@ app.use(logger());
 
 app.use("/", serveStatic({ path: "./public/index.html" }));
 
-app.use("/cover.jpg", serveStatic({ path: "./public/cover.jpg" }));
+app.use(`/public/*`, serveStatic({ root: `./public` }));
 
 app.post("/add", async (c) => {
   const userId = "andrew"; // TODO: get from auth
@@ -31,50 +34,35 @@ app.post("/add", async (c) => {
 
   console.log(`Adding YouTube video ${uri} for user ${userId}.`);
 
-  console.time("extractMetadata");
-  const {
-    id,
-    title,
-    thumbnail,
-    description,
-    channel,
-    duration,
-    webpage_url,
-    filesize,
-    filesize_approx,
-    url,
-  } = await extractMetadata(uri);
-  console.time("extractMetadata");
-
-  console.log(`Extracted YouTube video ${id} metadata:`, {
-    id,
-    title,
-    thumbnail,
-    description,
-    channel,
-    duration,
-    webpage_url,
-    url,
-    filesize,
-    filesize_approx,
-  });
+  const [metadata, audioStream] = await Promise.all([
+    extractMetadata(uri),
+    dowloadAudio(uri),
+  ]);
 
   const [video] = await db
     .insert(Videos)
     .values({
-      id,
+      id: metadata.id,
 
-      title,
-      thumbnail,
-      description,
-      channel,
+      title: metadata.title,
+      thumbnail: metadata.thumbnail,
+      description: metadata.description,
+      channel: metadata.channel,
 
-      url: webpage_url,
+      url: metadata.webpage_url,
 
-      duration: Math.round(duration) ?? 0,
-      length: filesize ?? filesize_approx ?? 0,
+      duration: Math.round(metadata.duration) ?? 0,
+      length: metadata.filesize ?? metadata.filesize_approx ?? 0,
     })
     .returning();
+
+  const buff = Buffer.from(await new Response(audioStream).arrayBuffer());
+
+  console.time("uploadAudio");
+  const putObjectCommandOutput = await uploadAudio(video.id, buff);
+  console.timeEnd("uploadAudio");
+
+  console.log(`Uploaded audio to R2 bucket.`, putObjectCommandOutput);
 
   await db.insert(UserVideos).values({
     userId,
@@ -110,7 +98,7 @@ app.get("/rss/:username", async (c) => {
 
   const rss = buildRss({
     title: `podtube (for ${username} 🔐)`,
-    image: `${BASE_URL}/cover.png`,
+    image: `${BASE_URL}/public/cover.jpg`,
     author: "podtube",
     description: "Listen to youtube videos as podcasts.",
     link: BASE_URL,
@@ -150,11 +138,32 @@ app.get("/audio/:id", async (c) => {
 
   console.log(`Requested audio file for YouTube video ${id}`);
 
-  console.log(`Request headers:`, c.req.raw.headers);
+  const range = c.req.header("range");
 
-  const { url } = await extractMetadata(id);
+  if (range) {
+    const { ContentRange, ContentLength, Body } = await streamAudio(id, range);
 
-  return fetch(url);
+    return new Response(Body?.transformToWebStream(), {
+      status: 206,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Accept-Ranges": "bytes",
+        "Content-Length": String(ContentLength),
+        "Content-Range": String(ContentRange),
+      },
+    });
+  }
+
+  const { ContentLength, Body } = await streamAudio(id);
+
+  return new Response(Body?.transformToWebStream(), {
+    status: 200,
+    headers: {
+      "Content-Type": "audio/mpeg",
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(ContentLength),
+    },
+  });
 });
 
 export default {
