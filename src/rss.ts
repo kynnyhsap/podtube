@@ -32,6 +32,8 @@ export type RssItem = {
   duration: number;
 };
 
+const cData = (s: string) => `<![CDATA[${s}]]>`;
+
 const buildRssItem = ({
   title,
   description,
@@ -46,9 +48,9 @@ const buildRssItem = ({
   <title>${title}</title>
   <link>${link}</link>
   <pubDate>${toRFC2822(pubDate)}</pubDate>
-  <description>test description</description>
+  <description>${cData(description)}</description>
 
-  <content:encoded><![CDATA[ ${description} ]]></content:encoded>
+  <content:encoded>${cData(description)}</content:encoded>
 
   <enclosure url="${audioUrl}" length="${length}" type="audio/mpeg"/>
 
@@ -58,7 +60,7 @@ const buildRssItem = ({
   <itunes:explicit>no</itunes:explicit>
   <itunes:image href="${image}"/>
   <itunes:duration>${formatDuration(duration)}</itunes:duration>
-  <itunes:summary>${description}</itunes:summary>
+  <itunes:summary>summary</itunes:summary>
   <itunes:author>${author}</itunes:author>
 </item>
 `;
