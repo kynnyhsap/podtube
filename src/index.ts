@@ -20,7 +20,7 @@ app.use(logger());
 
 app.use("/", serveStatic({ path: "./public/index.html" }));
 
-app.use(`/public/*`, serveStatic({ root: `./public` }));
+app.use(`/public/*`, serveStatic({ root: `.` }));
 
 app.post("/add", async (c) => {
   const userId = "andrew"; // TODO: get from auth
@@ -120,7 +120,7 @@ app.get("/rss/:username", async (c) => {
         pubDate: new Date(),
         image: thumbnail,
         author: channel,
-        audioUrl: `${BASE_URL}/audio/${id}`,
+        audioUrl: `${BASE_URL}/audio/${id}.mp3`,
         duration,
         length,
       }),
@@ -133,8 +133,16 @@ app.get("/rss/:username", async (c) => {
   });
 });
 
-app.get("/audio/:id", async (c) => {
-  const id = c.req.param("id");
+app.get("/audio/:filename", async (c) => {
+  const filename = c.req.param("finename");
+
+  const id = filename?.split(".")[0];
+
+  if (!id) {
+    throw new HTTPException(400, {
+      message: `Invalid audio filename "${filename}". Expected "{video-id}.mp3"`,
+    });
+  }
 
   console.log(`Requested audio file for YouTube video ${id}`);
 
