@@ -1,7 +1,8 @@
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 import { buildRss } from "./rss";
 import { serveStatic } from "hono/bun";
-import { dowloadAudio, extractMetadata } from "./yt-dlp";
+import { extractMetadata } from "./yt-dlp";
 import { HTTPException } from "hono/http-exception";
 import { db } from "./db";
 import { Users, UserVideos, Videos } from "./db/schema";
@@ -11,6 +12,8 @@ const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 
 const app = new Hono();
+
+app.use(logger());
 
 app.use("/", serveStatic({ path: "./public/index.html" }));
 
@@ -26,6 +29,9 @@ app.post("/add", async (c) => {
     });
   }
 
+  console.log(`Adding YouTube video ${uri} for user ${userId}.`);
+
+  console.time("extractMetadata");
   const {
     id,
     title,
@@ -35,7 +41,23 @@ app.post("/add", async (c) => {
     duration,
     webpage_url,
     filesize,
+    filesize_approx,
+    url,
   } = await extractMetadata(uri);
+  console.time("extractMetadata");
+
+  console.log(`Extracted YouTube video ${id} metadata:`, {
+    id,
+    title,
+    thumbnail,
+    description,
+    channel,
+    duration,
+    webpage_url,
+    url,
+    filesize,
+    filesize_approx,
+  });
 
   const [video] = await db
     .insert(Videos)
@@ -50,7 +72,7 @@ app.post("/add", async (c) => {
       url: webpage_url,
 
       duration: Math.round(duration) ?? 0,
-      length: filesize ?? 0,
+      length: filesize ?? filesize_approx ?? 0,
     })
     .returning();
 
@@ -62,8 +84,10 @@ app.post("/add", async (c) => {
   return c.json(video);
 });
 
-app.get("/feed/:username", async (c) => {
+app.get("/rss/:username", async (c) => {
   const username = c.req.param("username");
+
+  console.log(`Requested RSS feed for user "${username}"`);
 
   const user = db.select().from(Users).where(eq(Users.username, username));
   if (!user) {
@@ -103,7 +127,6 @@ app.get("/feed/:username", async (c) => {
         length,
       }) => ({
         title,
-        subtitle: "subtitle - todo remove it",
         description,
         link: url,
         pubDate: new Date(),
@@ -118,17 +141,20 @@ app.get("/feed/:username", async (c) => {
 
   return new Response(rss, {
     status: 200,
-    headers: { "Content-Type": "application/rss+xml" },
+    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
   });
 });
 
 app.get("/audio/:id", async (c) => {
   const id = c.req.param("id");
-  const stream = await dowloadAudio(id);
 
-  return new Response(stream, {
-    headers: { "content-type": "audio/mpeg" },
-  });
+  console.log(`Requested audio file for YouTube video ${id}`);
+
+  console.log(`Request headers:`, c.req.raw.headers);
+
+  const { url } = await extractMetadata(id);
+
+  return fetch(url);
 });
 
 export default {

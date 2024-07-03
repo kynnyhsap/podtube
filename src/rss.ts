@@ -23,7 +23,6 @@ function formatDuration(duration: number): string {
 export type RssItem = {
   title: string;
   description: string;
-  subtitle: string;
   link: string;
   pubDate: Date;
   audioUrl: string;
@@ -59,7 +58,6 @@ const buildRssItem = ({
     <itunes:episodeType>full</itunes:episodeType>
 	  <itunes:explicit>no</itunes:explicit>
     <itunes:image href="${image}"/>
-    <itunes:subtitle>${subtitle}</itunes:subtitle>
 	  <itunes:duration>${formatDuration(duration)}</itunes:duration>
     <itunes:summary>${""}</itunes:summary>
     <itunes:author>${author}</itunes:author>

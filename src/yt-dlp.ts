@@ -15,6 +15,8 @@ type YtDlpMetadataResult = {
   chapters: any;
   webpage_url: string;
   filesize: number;
+  filesize_approx: number;
+  url: string;
 };
 
 export async function extractMetadata(uri: string) {
