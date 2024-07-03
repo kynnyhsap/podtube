@@ -32,7 +32,6 @@ export type RssItem = {
   duration: number;
 };
 
-// TODO: add chapters <podcast:chapters url="${chaptersUrl}" type="application/json+chapters"/>
 const buildRssItem = ({
   title,
   description,
@@ -47,7 +46,7 @@ const buildRssItem = ({
   <title>${title}</title>
   <link>${link}</link>
   <pubDate>${toRFC2822(pubDate)}</pubDate>
-  <description>${description}</description>
+  <description>test description</description>
 
   <content:encoded><![CDATA[ ${description} ]]></content:encoded>
 
@@ -87,7 +86,7 @@ export const buildRss = ({
 
   items: RssItem[];
 }) => `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:psc="http://podlove.org/simple-chapters">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
 	<channel>
 		<title>${title}</title>
 		<description>${description}</description>
@@ -98,12 +97,17 @@ export const buildRss = ({
 		<atom:link href="${link}" rel="alternate" type="text/html"/>
 		<itunes:author>${author}</itunes:author>
 		<itunes:summary>${description}</itunes:summary>
-		<itunes:explicit>no</itunes:explicit>
+		<itunes:explicit>false</itunes:explicit>
+		<language>en-us</language>
+		<itunes:category text="Technology"/>
 		<itunes:image href="${image}"/>
 		<itunes:owner>
 			<itunes:name>${author}</itunes:name>
+			<itunes:email>tobirawork@gmail.com</itunes:email>
 		</itunes:owner>
 		<itunes:keywords>${keywords.join(", ")}</itunes:keywords>
+		<podcast:funding>It's free!</podcast:funding>
+		<podcast:person role="host" href="${link}">${author}</podcast:person>
 		${items.map(buildRssItem).join("")}
 	</channel>
 </rss>
