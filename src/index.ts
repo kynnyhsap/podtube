@@ -136,7 +136,7 @@ app.get("/rss/:username", async (c) => {
 });
 
 app.get("/audio/:filename", async (c) => {
-  const filename = c.req.param("finename");
+  const filename = c.req.param("filename");
 
   const id = filename?.split(".")[0];
 
