@@ -43,23 +43,24 @@ const buildRssItem = ({
   image,
   author,
   duration,
-}: RssItem) => `
-<item>
-    <title>${title}</title>
-    <description>${description}</description>
-    <link>${link}</link>
-    <pubDate>${toRFC2822(pubDate)}</pubDate>
+}: RssItem) => `<item>
+  <title>${title}</title>
+  <link>${link}</link>
+  <pubDate>${toRFC2822(pubDate)}</pubDate>
+  <description>${description}</description>
 
-    <enclosure url="${audioUrl}" length="${length}" type="audio/mpeg"/>
+  <content:encoded><![CDATA[ ${description} ]]></content:encoded>
 
-    <dc:creator>${author}</dc:creator>
+  <enclosure url="${audioUrl}" length="${length}" type="audio/mpeg"/>
 
-    <itunes:episodeType>full</itunes:episodeType>
-	  <itunes:explicit>no</itunes:explicit>
-    <itunes:image href="${image}"/>
-	  <itunes:duration>${formatDuration(duration)}</itunes:duration>
-    <itunes:summary>${""}</itunes:summary>
-    <itunes:author>${author}</itunes:author>
+  <dc:creator>${author}</dc:creator>
+
+  <itunes:episodeType>full</itunes:episodeType>
+  <itunes:explicit>no</itunes:explicit>
+  <itunes:image href="${image}"/>
+  <itunes:duration>${formatDuration(duration)}</itunes:duration>
+  <itunes:summary>${description}</itunes:summary>
+  <itunes:author>${author}</itunes:author>
 </item>
 `;
 
@@ -71,6 +72,7 @@ export const buildRss = ({
   image,
   description,
   link,
+  rssLink,
   pubDate,
 
   items,
@@ -80,19 +82,22 @@ export const buildRss = ({
   author: string;
   description: string;
   link: string;
+  rssLink: string;
   pubDate: Date;
 
   items: RssItem[];
-}) => `
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+}) => `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:psc="http://podlove.org/simple-chapters">
 	<channel>
 		<title>${title}</title>
 		<description>${description}</description>
 		<link>${link}</link>
 		<pubDate>${toRFC2822(pubDate)}</pubDate>
 		<copyright>All rights reserved</copyright>
+		<atom:link href="${rssLink}" rel="self" type="application/rss+xml"/>
+		<atom:link href="${link}" rel="alternate" type="text/html"/>
 		<itunes:author>${author}</itunes:author>
-		<itunes:summary>${""}</itunes:summary>
+		<itunes:summary>${description}</itunes:summary>
 		<itunes:explicit>no</itunes:explicit>
 		<itunes:image href="${image}"/>
 		<itunes:owner>

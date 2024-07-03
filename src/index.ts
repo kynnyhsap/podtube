@@ -98,10 +98,11 @@ app.get("/rss/:username", async (c) => {
 
   const rss = buildRss({
     title: `podtube (for ${username} 🔐)`,
-    image: `${BASE_URL}/public/cover.jpg`,
+    image: `${BASE_URL}/public/logo.png`,
     author: "podtube",
     description: "Listen to youtube videos as podcasts.",
     link: BASE_URL,
+    rssLink: `${BASE_URL}/rss/${username}`,
     pubDate: new Date(),
     items: videos.map(
       ({
