@@ -100,7 +100,7 @@ export const buildRss = ({
 		<itunes:author>${author}</itunes:author>
 		<itunes:summary>${description}</itunes:summary>
 		<itunes:explicit>false</itunes:explicit>
-		<language>en-us</language>
+		<language>en</language>
 		<itunes:category text="Technology"/>
 		<itunes:image href="${image}"/>
 		<itunes:owner>
@@ -110,7 +110,7 @@ export const buildRss = ({
 		<itunes:keywords>${keywords.join(", ")}</itunes:keywords>
 		<podcast:funding>It's free!</podcast:funding>
 		<podcast:person role="host" href="${link}">${author}</podcast:person>
-		${items.map(buildRssItem).join("")}
+		${items.map(buildRssItem).join("\n")}
 	</channel>
 </rss>
 `;

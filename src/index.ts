@@ -103,7 +103,7 @@ app.get("/rss/:username", async (c) => {
     description: "Listen to youtube videos as podcasts.",
     link: BASE_URL,
     rssLink: `${BASE_URL}/rss/${username}`,
-    pubDate: new Date(),
+    pubDate: new Date("2024-06-01"),
     items: videos.map(
       ({
         id,
@@ -114,11 +114,12 @@ app.get("/rss/:username", async (c) => {
         thumbnail,
         channel,
         length,
+        createdAt,
       }) => ({
         title,
         description,
         link: url,
-        pubDate: new Date(),
+        pubDate: new Date(createdAt),
         image: thumbnail,
         author: channel,
         audioUrl: `${BASE_URL}/audio/${id}.mp3`,
