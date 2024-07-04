@@ -6,10 +6,12 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "./db";
 import { Users, UserVideos, Videos } from "./db/schema";
 import { eq } from "drizzle-orm";
+import sharp from "sharp";
 import { extractMetadata } from "./extract-metadata";
 import { dowloadAudio } from "./download-audio";
 import { uploadAudio } from "./upload-audio";
 import { streamAudio } from "./stream-audio";
+import { splitFilename } from "./split-filename";
 
 const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -119,9 +121,9 @@ app.get("/rss/:username", async (c) => {
         title,
         description,
         link: url,
-        pubDate: new Date(createdAt),
-        image: thumbnail,
         author: channel,
+        pubDate: new Date(createdAt),
+        image: `${BASE_URL}/image/${id}.png`,
         audioUrl: `${BASE_URL}/audio/${id}.mp3`,
         duration,
         length,
@@ -137,12 +139,11 @@ app.get("/rss/:username", async (c) => {
 
 app.get("/audio/:filename", async (c) => {
   const filename = c.req.param("filename");
+  const { id, ext } = splitFilename(filename);
 
-  const id = filename?.split(".")[0];
-
-  if (!id) {
+  if (!id || (ext && ext !== "mp3")) {
     throw new HTTPException(400, {
-      message: `Invalid audio filename "${filename}". Expected "{video-id}.mp3"`,
+      message: `Invalid audio filename "${filename}". Expected "{videoId}.mp3"`,
     });
   }
 
@@ -150,29 +151,53 @@ app.get("/audio/:filename", async (c) => {
 
   const range = c.req.header("range");
 
-  if (range) {
-    const { ContentRange, ContentLength, Body } = await streamAudio(id, range);
+  const { ContentRange, ContentLength, Body } = await streamAudio(id, range);
 
-    return new Response(Body?.transformToWebStream(), {
-      status: 206,
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "Accept-Ranges": "bytes",
-        "Content-Length": String(ContentLength),
-        "Content-Range": String(ContentRange),
-      },
-    });
+  if (!Body) {
+    throw new HTTPException(404, { message: "Audio stream not available" });
   }
 
-  const { ContentLength, Body } = await streamAudio(id);
+  const stream = Body.transformToWebStream();
 
-  return new Response(Body?.transformToWebStream(), {
-    status: 200,
+  const response = new Response(stream, {
+    status: range ? 206 : 200,
     headers: {
       "Content-Type": "audio/mpeg",
       "Accept-Ranges": "bytes",
       "Content-Length": String(ContentLength),
     },
+  });
+
+  if (range) {
+    response.headers.set("Content-Range", String(ContentRange));
+  }
+
+  return response;
+});
+
+const IMAGE_SIZE = 1300;
+
+app.get("/image/:filename", async (c) => {
+  const filename = c.req.param("filename");
+  const { id, ext } = splitFilename(filename);
+
+  if (!id) {
+    throw new HTTPException(400, {
+      message: `Invalid image filename "${filename}". Expected "{videoId}.png"`,
+    });
+  }
+
+  const [video] = await db.select().from(Videos).where(eq(Videos.id, id));
+
+  const imageResponse = await fetch(video.thumbnail);
+
+  const image = await imageResponse.arrayBuffer();
+
+  const resized = await sharp(image).resize(IMAGE_SIZE, IMAGE_SIZE).toBuffer();
+
+  return new Response(resized, {
+    status: 200,
+    headers: { "Content-Type": "image/jpeg" },
   });
 });
 
