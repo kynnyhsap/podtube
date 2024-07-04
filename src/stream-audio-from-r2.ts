@@ -1,10 +1,10 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { BUCKET_NAME, r2client } from "./r2";
 
-export async function streamAudio(id: string, range?: string) {
+export async function streamAudioFromR2(key: string, range?: string) {
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
-    Key: id,
+    Key: key,
     Range: range,
   });
 

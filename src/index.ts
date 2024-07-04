@@ -9,12 +9,12 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { extractMetadata } from "./extract-metadata";
 import { dowloadAudio } from "./download-audio";
-import { uploadAudio } from "./upload-audio";
-import { streamAudio } from "./stream-audio";
-import { splitFilename } from "./split-filename";
-import { updateAudioID3V2Metadata } from "./update-audio-metadata";
+import { uploadAudioToR2 } from "./upload-audio-to-r2";
+import { streamAudioFromR2 } from "./stream-audio-from-r2";
 import { format } from "date-fns";
+import { updateID3V2Metadata } from "./update-id3v2-metadata";
 import { readableStreamToArrayBuffer } from "bun";
+import path from "path";
 
 const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -25,7 +25,7 @@ app.use(logger());
 
 app.use("/", serveStatic({ path: "./public/index.html" }));
 
-app.use(`/public/*`, serveStatic({ root: `.` }));
+app.use(`/public/*`, serveStatic({ root: "." }));
 
 app.post("/add", async (c) => {
   const userId = "andrew"; // TODO: get from auth
@@ -61,10 +61,12 @@ app.post("/add", async (c) => {
     })
     .returning();
 
-  const buff = Buffer.from(await new Response(audioStream).arrayBuffer());
+  const audioBuffer = Buffer.from(
+    await readableStreamToArrayBuffer(audioStream),
+  );
 
   console.time("updateAudioID3V2Metadata");
-  const updateAudioStream = await updateAudioID3V2Metadata(buff, {
+  const updateAudioStream = await updateID3V2Metadata(audioBuffer, {
     title: video.title,
     artist: video.channel,
     album: video.channel,
@@ -73,9 +75,16 @@ app.post("/add", async (c) => {
   });
   console.timeEnd("updateAudioID3V2Metadata");
 
-  console.time("uploadAudio");
-  const putObjectCommandOutput = await uploadAudio(video.id, updateAudioStream);
-  console.timeEnd("uploadAudio");
+  const updatedAudioBuffer = Buffer.from(
+    await readableStreamToArrayBuffer(updateAudioStream),
+  );
+
+  console.time("uploadAudioToR2");
+  const putObjectCommandOutput = await uploadAudioToR2(
+    video.id,
+    updatedAudioBuffer,
+  );
+  console.timeEnd("uploadAudioToR2");
 
   console.log(`Uploaded audio to R2 bucket.`, putObjectCommandOutput);
 
@@ -152,9 +161,9 @@ app.get("/rss/:username", async (c) => {
 
 app.get("/audio/:filename", async (c) => {
   const filename = c.req.param("filename");
-  const { id, ext } = splitFilename(filename);
+  const { name: id, ext } = path.parse(c.req.param("filename"));
 
-  if (!id || (ext && ext !== "mp3")) {
+  if (!id || (ext && ext !== ".mp3")) {
     throw new HTTPException(400, {
       message: `Invalid audio filename "${filename}". Expected "{videoId}.mp3"`,
     });
@@ -164,7 +173,10 @@ app.get("/audio/:filename", async (c) => {
 
   const range = c.req.header("range");
 
-  const { ContentRange, ContentLength, Body } = await streamAudio(id, range);
+  const { ContentRange, ContentLength, Body } = await streamAudioFromR2(
+    id,
+    range,
+  );
 
   if (!Body) {
     throw new HTTPException(404, { message: "Audio stream not available" });
@@ -192,9 +204,9 @@ const IMAGE_SIZE = 1300;
 
 app.get("/image/:filename", async (c) => {
   const filename = c.req.param("filename");
-  const { id, ext } = splitFilename(filename);
+  const { name: id, ext } = path.parse(filename);
 
-  if (!id) {
+  if (!id || (ext && ext !== ".png")) {
     throw new HTTPException(400, {
       message: `Invalid image filename "${filename}". Expected "{videoId}.png"`,
     });
@@ -210,7 +222,9 @@ app.get("/image/:filename", async (c) => {
 
   return new Response(resized, {
     status: 200,
-    headers: { "Content-Type": "image/jpeg" },
+    headers: {
+      "Content-Type": "image/png",
+    },
   });
 });
 
