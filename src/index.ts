@@ -12,6 +12,9 @@ import { dowloadAudio } from "./download-audio";
 import { uploadAudio } from "./upload-audio";
 import { streamAudio } from "./stream-audio";
 import { splitFilename } from "./split-filename";
+import { updateAudioID3V2Metadata } from "./update-audio-metadata";
+import { format } from "date-fns";
+import { readableStreamToArrayBuffer } from "bun";
 
 const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -60,8 +63,18 @@ app.post("/add", async (c) => {
 
   const buff = Buffer.from(await new Response(audioStream).arrayBuffer());
 
+  console.time("updateAudioID3V2Metadata");
+  const updateAudioStream = await updateAudioID3V2Metadata(buff, {
+    title: video.title,
+    artist: video.channel,
+    album: video.channel,
+    date: format(video.createdAt, "yyyy-MM-dd"),
+    publisher: "podtube",
+  });
+  console.timeEnd("updateAudioID3V2Metadata");
+
   console.time("uploadAudio");
-  const putObjectCommandOutput = await uploadAudio(video.id, buff);
+  const putObjectCommandOutput = await uploadAudio(video.id, updateAudioStream);
   console.timeEnd("uploadAudio");
 
   console.log(`Uploaded audio to R2 bucket.`, putObjectCommandOutput);
