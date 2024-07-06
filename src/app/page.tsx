@@ -3,11 +3,45 @@ import { db } from "@/db";
 import { SelectVideos, Videos } from "@/db/schema";
 import { formatDuration } from "@/lib/format-duration";
 
+export default async function Home({ searchParams }: { searchParams: any }) {
+  const { uri } = searchParams;
+
+  const videos = await db.select().from(Videos).all();
+
+  return (
+    <main className="text-center mx-auto">
+      <h1>podtube</h1>
+
+      <div className="my-8 flex gap-4 items-center justify-center">
+        <input
+          type="text"
+          placeholder="youtube link"
+          className="py-2 px-4 rounded text-gray-600"
+          value={uri ?? ""}
+        />
+
+        <button className="py-2 px-4 rounded bg-red-500 hover:bg-red-500/90 transition-colors">
+          add
+        </button>
+      </div>
+
+      <div className="my-8">
+        <CopyRssButton />
+      </div>
+
+      <YouTubeVideoList videos={videos} />
+    </main>
+  );
+}
+
 function YouTubeVideoList({ videos }: { videos: SelectVideos[] }) {
   return (
     <div className="max-w-sm mx-auto shadow-lg rounded-lg overflow-hidden">
       {videos.map((video) => (
-        <div className="relative overflow-hidden rounded-lg my-6">
+        <div
+          key={video.id}
+          className="relative overflow-hidden rounded-lg my-6"
+        >
           <div
             className="absolute inset-0 bg-cover bg-center filter blur-md opacity-50"
             style={{ backgroundImage: `url(${video.thumbnail})` }}
@@ -29,31 +63,5 @@ function YouTubeVideoList({ videos }: { videos: SelectVideos[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-export default async function Home() {
-  const videos = await db.select().from(Videos).all();
-
-  return (
-    <main className="text-center mx-auto">
-      <h1>podtube</h1>
-
-      <div className="my-8 flex gap-2 items-center justify-center">
-        <input
-          type="text"
-          placeholder="youtube link"
-          className="py-2 px-4 rounded text-gray-600"
-        />
-
-        {/* <Button>add</Button> */}
-      </div>
-
-      <div className="my-8">
-        <CopyRssButton />
-      </div>
-
-      <YouTubeVideoList videos={videos} />
-    </main>
   );
 }
