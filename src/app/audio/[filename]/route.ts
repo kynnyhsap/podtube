@@ -1,9 +1,11 @@
-import type { APIEvent } from "@solidjs/start/server";
 import path from "path";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { BUCKET_NAME, r2client } from "~/r2";
+import { BUCKET_NAME, r2client } from "@/r2";
 
-export async function GET({ params, request }: APIEvent) {
+export async function GET(
+  request: Request,
+  { params }: { params: { filename: string } },
+) {
   const { filename } = params;
 
   const { name: id, ext } = path.parse(filename);

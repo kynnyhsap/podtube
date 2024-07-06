@@ -12,7 +12,9 @@ type JobData = {
 };
 
 export const queue = new Queue<JobData>("dowload-queue", {
-  redis: createClient({ url: process.env.REDIS_QUEUE_URL! }),
+  redis: createClient({
+    url: process.env.REDIS_URL!,
+  }),
 });
 
 export async function jobHandler(job: Queue.Job<JobData>) {

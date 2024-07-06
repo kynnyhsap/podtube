@@ -1,13 +1,10 @@
 import { $ } from "bun";
-import type { APIEvent } from "@solidjs/start/server";
-import { db } from "~/db";
-import { UserVideos, Videos } from "~/db/schema";
-import { queue } from "~/queue";
+import { db } from "@/db";
+import { UserVideos, Videos } from "@/db/schema";
+import { queue } from "@/queue";
 
-export async function POST({ request }: APIEvent) {
+export async function extract(uri: string) {
   const userId = "andrew"; // TODO
-
-  const { uri } = await request.json();
 
   const metadata = JSON.parse(
     await $`yt-dlp -f ba -s -j ${uri}`.text(),
@@ -44,7 +41,7 @@ export async function POST({ request }: APIEvent) {
     console.error("Failed to launch narraion job.", e);
   }
 
-  return new Response(JSON.stringify(video));
+  return video;
 }
 
 type YtDlpMetadataResult = {

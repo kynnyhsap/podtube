@@ -1,13 +1,15 @@
-import type { APIEvent } from "@solidjs/start/server";
 import { eq } from "drizzle-orm";
 import path from "path";
 import sharp from "sharp";
-import { db } from "~/db";
-import { Videos } from "~/db/schema";
+import { db } from "@/db";
+import { Videos } from "@/db/schema";
 
 const IMAGE_SIZE = 1300;
 
-export async function GET({ params, request }: APIEvent) {
+export async function GET(
+  request: Request,
+  { params }: { params: { filename: string } },
+) {
   const { filename } = params;
 
   const { name: id, ext } = path.parse(filename);

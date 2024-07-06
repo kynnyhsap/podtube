@@ -1,14 +1,20 @@
-import type { APIEvent } from "@solidjs/start/server";
 import { format } from "date-fns";
-import { json } from "@solidjs/router";
-import { db } from "~/db";
-import { Users, UserVideos, Videos } from "~/db/schema";
+import { db } from "@/db";
+import { Users, UserVideos, Videos } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { formatDuration } from "@/lib/format-duration";
 
 const PORT = process.env.PORT ?? 3000;
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 
-export async function GET({ params }: APIEvent) {
+export async function GET(
+  request: Request,
+  {
+    params,
+  }: {
+    params: { username: string };
+  },
+) {
   const { username } = params;
 
   console.log(`Requested RSS feed for user "${username}"`);
@@ -47,7 +53,6 @@ export async function GET({ params }: APIEvent) {
         description,
         url,
         duration,
-        thumbnail,
         channel,
         length,
         createdAt,
@@ -74,24 +79,6 @@ export async function GET({ params }: APIEvent) {
 const cData = (s: string) => `<![CDATA[${s}]]>`;
 
 const toRFC2822 = (d: Date) => format(d, "EEE, dd MMM yyyy HH:mm:ss X");
-
-function formatDuration(duration: number): string {
-  const hours = Math.floor(duration / 3600);
-  const remainingSeconds = duration % 3600;
-  const minutes = Math.floor(remainingSeconds / 60);
-  const secs = remainingSeconds % 60;
-
-  const formattedMinutes =
-    minutes > 0 ? `${hours > 0 ? minutes : minutes}` : "0";
-
-  const formattedSeconds = secs < 10 && minutes > 0 ? `0${secs}` : `${secs}`;
-
-  if (hours > 0) {
-    return `${hours}:${formattedMinutes}:${formattedSeconds}`;
-  } else {
-    return `${minutes}:${formattedSeconds}`;
-  }
-}
 
 export type RssItem = {
   title: string;
