@@ -1,48 +1,11 @@
-import { $ } from "bun";
+"use server";
+
 import { db } from "@/db";
 import { UserVideos, Videos } from "@/db/schema";
-import { queue } from "@/queue";
-
-export async function extract(uri: string) {
-  const userId = "andrew"; // TODO
-
-  const metadata = JSON.parse(
-    await $`yt-dlp -f ba -s -j ${uri}`.text(),
-  ) as YtDlpMetadataResult;
-
-  const [video] = await db
-    .insert(Videos)
-    .values({
-      id: metadata.id,
-
-      title: metadata.title,
-      thumbnail: metadata.thumbnail,
-      description: metadata.description,
-      channel: metadata.channel,
-
-      url: metadata.webpage_url,
-
-      duration: Math.round(metadata.duration) ?? 0,
-      length: metadata.filesize ?? metadata.filesize_approx ?? 0,
-    })
-    .returning();
-
-  await db.insert(UserVideos).values({
-    userId,
-    videoId: video.id,
-  });
-
-  try {
-    const job = await queue.createJob({ id: video.id }).save();
-    job.on("succeeded", async (result: any) =>
-      console.log(`Received result for narration job ${job.id}:`, result),
-    );
-  } catch (e) {
-    console.error("Failed to launch narraion job.", e);
-  }
-
-  return video;
-}
+import { launchJob } from "../queue";
+// import { readableStreamToText, spawn } from "bun";
+import { and, eq } from "drizzle-orm";
+import youtubeId from "youtube-video-id";
 
 type YtDlpMetadataResult = {
   id: string;
@@ -59,3 +22,102 @@ type YtDlpMetadataResult = {
   filesize_approx: number;
   url: string;
 };
+
+async function addUserVideo(userId: string, videoId: string) {
+  const [existing] = await db
+    .select()
+    .from(UserVideos)
+    .where(and(eq(UserVideos.videoId, videoId), eq(UserVideos.userId, userId)));
+
+  if (existing) {
+    console.log(`User ${userId} already added video ${videoId} once.`);
+
+    return existing;
+  }
+
+  const [result] = await db
+    .insert(UserVideos)
+    .values({ userId, videoId })
+    .returning();
+
+  console.log(`User ${userId} added video ${videoId}.`);
+
+  return result;
+}
+
+// async function extractMetadata(id: string) {
+//   console.log(`Extracting metadata for video ${id} using yt-dlp...`);
+
+//   const key = `[yt-dlp metadata extraction] ${id}`;
+
+//   console.time(key);
+
+//   const { stdout } = spawn(`yt-dlp -f ba -s -j ${id}`.split(" "));
+
+//   const result = JSON.parse(
+//     await readableStreamToText(stdout),
+//   ) as YtDlpMetadataResult;
+
+//   console.timeEnd(key);
+
+//   return result;
+// }
+
+export async function extract(uri: string, userId: string) {
+  console.log(`Extracting video ${uri} for user ${userId}...`);
+
+  const id = youtubeId(uri);
+
+  // const [existingVideo] = await db
+  //   .select()
+  //   .from(Videos)
+  //   .where(eq(Videos.id, id));
+
+  // if (existingVideo) {
+  //   console.log(
+  //     `Video ${id} was already extracted once. No need for another extraction.`,
+  //   );
+
+  //   await addUserVideo(userId, id);
+
+  //   await launchJob(id);
+
+  //   // await extractMetadata(id);
+
+  //   return existingVideo;
+  // }
+
+  // const {
+  //   title,
+  //   thumbnail,
+  //   description,
+  //   channel,
+  //   duration,
+  //   filesize,
+  //   filesize_approx,
+  //   webpage_url,
+  // } = await extractMetadata(id);
+
+  // const [video] = await db
+  //   .insert(Videos)
+  //   .values({
+  //     id,
+
+  //     title,
+  //     thumbnail,
+  //     description,
+  //     channel,
+
+  //     url: webpage_url,
+
+  //     duration: Math.round(duration) ?? 0,
+  //     length: filesize ?? filesize_approx ?? 0,
+  //   })
+  //   .returning();
+
+  // await addUserVideo(userId, id);
+
+  await launchJob(id);
+
+  // return video;
+}

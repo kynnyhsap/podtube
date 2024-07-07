@@ -12,14 +12,15 @@
     "@aws-sdk/client-s3": "^3.609.0",
     "@libsql/client": "^0.7.0",
     "@paralleldrive/cuid2": "^2.2.2",
-    "bee-queue": "^1.7.1",
+    "bull": "^4.15.1",
+    "bullmq": "^5.8.4",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.31.2",
     "next": "^14.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "redis": "^4.6.15",
-    "sharp": "^0.33.4"
+    "sharp": "^0.33.4",
+    "youtube-video-id": "^1.0.3"
   },
   "devDependencies": {
     "@types/bun": "latest",

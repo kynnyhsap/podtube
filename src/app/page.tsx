@@ -1,7 +1,10 @@
 import { CopyRssButton } from "@/components/CopyRssButton";
+import { YouTubeUriInput } from "@/components/YouTubeUriInput";
 import { db } from "@/db";
 import { SelectVideos, Videos } from "@/db/schema";
 import { formatDuration } from "@/lib/format-duration";
+
+export const dynamic = true;
 
 export default async function Home({ searchParams }: { searchParams: any }) {
   const { uri } = searchParams;
@@ -10,20 +13,12 @@ export default async function Home({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="text-center mx-auto">
-      <h1>podtube</h1>
+      <h1 className="text-2xl font-bold my-16">
+        <span className="text-red-500">pod</span>
+        <span>tube</span>
+      </h1>
 
-      <div className="my-8 flex gap-4 items-center justify-center">
-        <input
-          type="text"
-          placeholder="youtube link"
-          className="py-2 px-4 rounded text-gray-600"
-          value={uri ?? ""}
-        />
-
-        <button className="py-2 px-4 rounded bg-red-500 hover:bg-red-500/90 transition-colors">
-          add
-        </button>
-      </div>
+      <YouTubeUriInput defaultUri={uri ?? ""} />
 
       <div className="my-8">
         <CopyRssButton />

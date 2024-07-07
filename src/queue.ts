@@ -1,72 +1,128 @@
-import Queue from "bee-queue";
-import { createClient } from "redis";
+import Queue from "bull";
 import { readableStreamToArrayBuffer, spawn } from "bun";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { BUCKET_NAME, r2client } from "./r2";
-import { db } from "./db";
-import { Videos } from "./db/schema";
+import { getVideo } from "./actions/get-video";
 
-type JobData = {
-  id: string;
-};
+const queue = new Queue<{ id: string }>("queue", process.env.REDIS_URL!);
 
-export const queue = new Queue<JobData>("dowload-queue", {
-  redis: createClient({
-    url: process.env.REDIS_URL!,
-  }),
-});
-
-export async function jobHandler(job: Queue.Job<JobData>) {
+queue.process(async (job) => {
   const { id } = job.data;
 
-  const m = `[Queue job ${job.id}] `;
+  const filename = id; // TODO: with mp3
 
-  console.log(m + `Started processing dowload job for YouTube video ${id}...`);
+  const m = `[Queue job ${job.id}] video ${id} | `;
+  console.log(m + `Started processing job.`);
 
-  const [video] = await db.select().from(Videos).where(eq(Videos.id, id));
+  job.progress(1);
 
-  const ytdlp = spawn(`yt-dlp ${id} -q -f ba -o -`.split(" "), {
-    stderr: "ignore",
-  });
+  // check if the video is already downloaded
+  try {
+    const { ContentLength } = await r2client.send(
+      new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: filename,
+      }),
+    );
 
-  const audioBuffer = Buffer.from(
-    await readableStreamToArrayBuffer(ytdlp.stdout),
-  );
+    console.log(m + `Audio already uploded to file storage.`, {
+      ContentLength,
+    });
 
+    job.progress(100);
+
+    return;
+  } catch (e) {
+    console.log(m + `Audio not found in file storage.`);
+  }
+
+  console.log(m + `Downloading audio...`);
+
+  job.progress(10);
+
+  const video = await getVideo(id);
+
+  job.progress(20);
+
+  console.time("yt-dlp dowloading");
+
+  const ytdlp = spawn(`yt-dlp ${id} -q -f ba -o -`.split(" "));
+  const audioBuffer = await readableStreamToArrayBuffer(ytdlp.stdout);
+
+  console.timeEnd("yt-dlp dowloading");
+
+  job.progress(50);
+
+  console.time("id3v2");
+
+  // add ID3V2 metadata to the audio file
   const ffmpeg = spawn(
     [
       ..."ffmpeg -i pipe:0 -f wav -id3v2_version 3".split(" "),
+      ..."-hide_banner -loglevel error".split(" "),
 
       "-metadata",
       "genre=Podcast",
       "-metadata",
       `title=${video.title}`,
+      "-metadata",
+      `artist=${video.channel}`,
 
       "-",
     ],
     {
       stdin: "pipe",
       stdout: "pipe",
-      // quiet: true,
     },
   );
 
   ffmpeg.stdin.write(audioBuffer);
   ffmpeg.stdin.end();
 
-  const buff = Buffer.from(await readableStreamToArrayBuffer(ffmpeg.stdout));
+  const audioWithID3V2 = Buffer.from(
+    await readableStreamToArrayBuffer(ffmpeg.stdout),
+  );
+
+  console.timeEnd("id3v2");
+
+  job.progress(70);
+
+  console.time("r2 upload");
 
   const result = await r2client.send(
     new PutObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: id,
-      Body: buff,
+      Key: filename,
+      Body: audioWithID3V2,
       ContentType: "audio/mpeg",
     }),
   );
 
-  return result;
-}
+  console.log(m + `Audio uploaded to file storage.`, result);
 
-queue.process(jobHandler);
+  console.timeEnd("r2 upload");
+
+  job.progress(100);
+
+  console.log(m + `Finished job.`);
+
+  return;
+});
+
+queue.on("error", (error) => {
+  console.error(`Job failed:`, error);
+});
+
+queue.on("progress", (job) => {
+  console.log(`Job ${job.id} is ${job.progress()}% done`);
+});
+
+export async function launchJob(id: string) {
+  // TODO: check if any other jobs are running for this video
+
+  try {
+    return await queue.add({ id });
+  } catch (e) {
+    console.error(`Failed to launch job for video ${id}`, e);
+  }
+}
