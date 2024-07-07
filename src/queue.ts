@@ -113,12 +113,21 @@ queue.on("error", (error) => {
   console.error(`Job failed:`, error);
 });
 
-queue.on("progress", (job) => {
-  console.log(`Job ${job.id} is ${job.progress()}% done`);
-});
+// queue.on("progress", (job) => {
+//   console.log(`Job ${job.id} is ${job.progress()}% done`);
+// });
 
 export async function launchJob(id: string) {
-  // TODO: check if any other jobs are running for this video
+  const jobs = await queue.getJobs(["active", "waiting", "delayed"]);
+
+  const alreadyProcessing = jobs.some((job) => job.data.id === id);
+
+  if (alreadyProcessing) {
+    console.log(
+      `Job for video ${id} already exists. Skipping diplicate launch.`,
+    );
+    return;
+  }
 
   try {
     return await queue.add({ id });
