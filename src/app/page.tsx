@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { SelectVideos, Videos } from "@/db/schema";
 import { formatDuration } from "@/lib/format-duration";
 
-export const dynamic = true;
+export const dynamic = "force-dynamic";
 
 export default async function Home({ searchParams }: { searchParams: any }) {
   const { uri } = searchParams;
