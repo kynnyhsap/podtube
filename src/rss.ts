@@ -1,84 +1,26 @@
 import { format } from "date-fns";
-import { db } from "@/db";
-import { Users, UserVideos, Videos } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { formatDuration } from "@/lib/format-duration";
-
-const PORT = process.env.PORT ?? 3000;
-const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
-
-export async function GET(
-  request: Request,
-  {
-    params,
-  }: {
-    params: { username: string };
-  },
-) {
-  const { username } = params;
-
-  console.log(`Requested RSS feed for user "${username}"`);
-
-  const user = db.select().from(Users).where(eq(Users.username, username));
-  if (!user) {
-    return new Response(`User "${username}" not found.`, { status: 404 });
-  }
-
-  const videos = (
-    await db
-      .select({
-        video: Videos,
-      })
-      .from(UserVideos)
-      .leftJoin(Users, eq(UserVideos.userId, Users.id))
-      .leftJoin(Videos, eq(UserVideos.videoId, Videos.id))
-      .where(eq(Users.username, username))
-      .all()
-  )
-    .map(({ video }) => video)
-    .filter((v) => v !== null);
-
-  const rss = buildRss({
-    title: `podtube (for ${username} 🔐)`,
-    image: `${BASE_URL}/public/logo.png`,
-    author: "podtube",
-    description: "Listen to youtube videos as podcasts.",
-    link: BASE_URL,
-    rssLink: `${BASE_URL}/rss/${username}`,
-    pubDate: new Date("2024-06-01"),
-    items: videos.map(
-      ({
-        id,
-        title,
-        description,
-        url,
-        duration,
-        channel,
-        length,
-        createdAt,
-      }) => ({
-        title,
-        description,
-        link: url,
-        author: channel,
-        pubDate: new Date(createdAt),
-        image: `${BASE_URL}/image/${id}.png`,
-        audioUrl: `${BASE_URL}/audio/${id}.mp3`,
-        duration,
-        length,
-      }),
-    ),
-  });
-
-  return new Response(rss, {
-    status: 200,
-    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
-  });
-}
 
 const cData = (s: string) => `<![CDATA[${s}]]>`;
 
 const toRFC2822 = (d: Date) => format(d, "EEE, dd MMM yyyy HH:mm:ss X");
+
+export function formatDuration(duration: number): string {
+  const hours = Math.floor(duration / 3600);
+  const remainingSeconds = duration % 3600;
+  const minutes = Math.floor(remainingSeconds / 60);
+  const secs = remainingSeconds % 60;
+
+  const formattedMinutes =
+    minutes > 0 ? `${hours > 0 ? minutes : minutes}` : "0";
+
+  const formattedSeconds = secs < 10 && minutes > 0 ? `0${secs}` : `${secs}`;
+
+  if (hours > 0) {
+    return `${hours}:${formattedMinutes}:${formattedSeconds}`;
+  } else {
+    return `${minutes}:${formattedSeconds}`;
+  }
+}
 
 export type RssItem = {
   title: string;
@@ -125,7 +67,7 @@ const buildRssItem = ({
 
 const keywords = ["youtube", "podtube"];
 
-const buildRss = ({
+export const buildRss = ({
   title,
   author,
   image,

@@ -2,7 +2,7 @@ import Queue from "bull";
 import { readableStreamToArrayBuffer, spawn } from "bun";
 import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { BUCKET_NAME, r2client } from "./r2";
-import { getVideo } from "./actions/get-video";
+import { getVideo } from "./db/get-video";
 
 const queue = new Queue<{ id: string }>("queue", process.env.REDIS_URL!);
 

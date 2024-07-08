@@ -1,4 +1,4 @@
-export default function NotFound() {
+export function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center gap-16 my-16">
       <img alt="confused.gif" height={300} width={300} src="/confused.gif" />

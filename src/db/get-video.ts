@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { Videos } from "@/db/schema";
+import { db } from ".";
+import { Videos } from "./schema";
 import { eq } from "drizzle-orm";
 
 export async function getVideo(id: string) {

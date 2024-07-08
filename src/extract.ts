@@ -1,9 +1,7 @@
-"use server";
-
-import { db } from "@/db";
-import { UserVideos, Videos } from "@/db/schema";
-import { launchJob } from "../queue";
-// import { readableStreamToText, spawn } from "bun";
+import { db } from "./db";
+import { UserVideos, Videos } from "./db/schema";
+import { launchJob } from "./queue";
+import { readableStreamToText, spawn } from "bun";
 import { and, eq } from "drizzle-orm";
 import youtubeId from "youtube-video-id";
 
@@ -45,23 +43,23 @@ async function addUserVideo(userId: string, videoId: string) {
   return result;
 }
 
-// async function extractMetadata(id: string) {
-//   console.log(`Extracting metadata for video ${id} using yt-dlp...`);
+async function extractMetadata(id: string) {
+  console.log(`Extracting metadata for video ${id} using yt-dlp...`);
 
-//   const key = `[yt-dlp metadata extraction] ${id}`;
+  const key = `[yt-dlp metadata extraction] ${id}`;
 
-//   console.time(key);
+  console.time(key);
 
-//   const { stdout } = spawn(`yt-dlp -f ba -s -j ${id}`.split(" "));
+  const { stdout } = spawn(`yt-dlp -f ba -s -j ${id}`.split(" "));
 
-//   const result = JSON.parse(
-//     await readableStreamToText(stdout),
-//   ) as YtDlpMetadataResult;
+  const result = JSON.parse(
+    await readableStreamToText(stdout),
+  ) as YtDlpMetadataResult;
 
-//   console.timeEnd(key);
+  console.timeEnd(key);
 
-//   return result;
-// }
+  return result;
+}
 
 export async function extract(uri: string, userId: string) {
   console.log(`Extracting video ${uri} for user ${userId}...`);
