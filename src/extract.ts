@@ -66,56 +66,56 @@ export async function extract(uri: string, userId: string) {
 
   const id = youtubeId(uri);
 
-  // const [existingVideo] = await db
-  //   .select()
-  //   .from(Videos)
-  //   .where(eq(Videos.id, id));
+  const [existingVideo] = await db
+    .select()
+    .from(Videos)
+    .where(eq(Videos.id, id));
 
-  // if (existingVideo) {
-  //   console.log(
-  //     `Video ${id} was already extracted once. No need for another extraction.`,
-  //   );
+  if (existingVideo) {
+    console.log(
+      `Video ${id} was already extracted once. No need for another extraction.`,
+    );
 
-  //   await addUserVideo(userId, id);
+    await addUserVideo(userId, id);
 
-  //   await launchJob(id);
+    await launchJob(id);
 
-  //   // await extractMetadata(id);
+    await extractMetadata(id);
 
-  //   return existingVideo;
-  // }
+    return existingVideo;
+  }
 
-  // const {
-  //   title,
-  //   thumbnail,
-  //   description,
-  //   channel,
-  //   duration,
-  //   filesize,
-  //   filesize_approx,
-  //   webpage_url,
-  // } = await extractMetadata(id);
+  const {
+    title,
+    thumbnail,
+    description,
+    channel,
+    duration,
+    filesize,
+    filesize_approx,
+    webpage_url,
+  } = await extractMetadata(id);
 
-  // const [video] = await db
-  //   .insert(Videos)
-  //   .values({
-  //     id,
+  const [video] = await db
+    .insert(Videos)
+    .values({
+      id,
 
-  //     title,
-  //     thumbnail,
-  //     description,
-  //     channel,
+      title,
+      thumbnail,
+      description,
+      channel,
 
-  //     url: webpage_url,
+      url: webpage_url,
 
-  //     duration: Math.round(duration) ?? 0,
-  //     length: filesize ?? filesize_approx ?? 0,
-  //   })
-  //   .returning();
+      duration: Math.round(duration) ?? 0,
+      length: filesize ?? filesize_approx ?? 0,
+    })
+    .returning();
 
-  // await addUserVideo(userId, id);
+  await addUserVideo(userId, id);
 
   await launchJob(id);
 
-  // return video;
+  return video;
 }

@@ -14,6 +14,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { BUCKET_NAME, r2client } from "./r2";
 import { eq } from "drizzle-orm";
 import { buildRss } from "./rss";
+import { extract } from "./extract";
 
 const PORT = process.env.PORT ?? 3000;
 
@@ -34,7 +35,15 @@ app.get("/", async (c) => {
   );
 });
 
-app.post("/extract", async (c) => {});
+app.post("/extract", async (c) => {
+  const userId = "andrew";
+
+  const { uri } = (await c.req.json()) as { uri: string };
+
+  const result = await extract(uri, userId);
+
+  return c.json(result);
+});
 
 app.get("/audio/:filename", async (c) => {
   const { filename } = c.req.param();
