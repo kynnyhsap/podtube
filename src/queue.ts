@@ -38,22 +38,26 @@ queue.process(async (job) => {
 
   console.log(m + `Downloading audio...`);
 
-  job.progress(10);
+  job.progress(5);
 
   const video = await getVideo(id);
 
-  job.progress(20);
+  job.progress(10);
 
   console.time("yt-dlp dowloading");
+
+  console.log(m + `Downloading audio with yt-dlp...`);
 
   const ytdlp = spawn(`yt-dlp ${id} -q -f ba -o -`.split(" "));
   const audioBuffer = await readableStreamToArrayBuffer(ytdlp.stdout);
 
   console.timeEnd("yt-dlp dowloading");
 
-  job.progress(50);
+  job.progress(20);
 
   console.time("id3v2");
+
+  console.log(m + "Adding ID3V2 metadata headers to the audio file...");
 
   // add ID3V2 metadata to the audio file
   const ffmpeg = spawn(
@@ -85,9 +89,11 @@ queue.process(async (job) => {
 
   console.timeEnd("id3v2");
 
-  job.progress(70);
+  job.progress(25);
 
   console.time("r2 upload");
+
+  console.log(m + `Uploading audio to file storage...`);
 
   const result = await r2client.send(
     new PutObjectCommand({

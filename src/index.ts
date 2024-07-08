@@ -1,18 +1,18 @@
 import { Hono } from "hono";
-
 import path from "path";
 import { launchJob } from "./queue";
 import { logger } from "hono/logger";
 import { serveStatic } from "hono/bun";
+import { basicAuth } from "hono/basic-auth";
 import { db } from "./db";
 import { Users, UserVideos, Videos } from "./db/schema";
-
+import sharp from "sharp";
 import { NotFound } from "./app/not-found";
 import { Layout } from "./app/layout";
 import { Home } from "./app/home";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { BUCKET_NAME, r2client } from "./r2";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { buildRss } from "./rss";
 import { extract } from "./extract";
 
@@ -24,9 +24,24 @@ const app = new Hono();
 
 app.use(logger());
 
-app.get("/", async (c) => {
+const authMiddleware = basicAuth({
+  verifyUser: async (username, password, c) => {
+    const [user] = await db
+      .select()
+      .from(Users)
+      .where(eq(Users.username, username));
+
+    return !!user;
+  },
+});
+
+app.get("/", authMiddleware, async (c) => {
   const { uri } = c.req.query();
-  const videos = await db.select().from(Videos).all();
+  const videos = await db
+    .select()
+    .from(Videos)
+    .orderBy(desc(Videos.createdAt))
+    .all();
 
   return c.html(
     Layout({
@@ -35,7 +50,7 @@ app.get("/", async (c) => {
   );
 });
 
-app.post("/extract", async (c) => {
+app.post("/extract", authMiddleware, async (c) => {
   const userId = "andrew";
 
   const { uri } = (await c.req.json()) as { uri: string };
@@ -89,6 +104,39 @@ app.get("/audio/:filename", async (c) => {
   }
 
   return response;
+});
+
+const IMAGE_SIZE = 1300;
+
+app.get("/image/:filename", async (c) => {
+  const { filename } = c.req.param();
+
+  const { name: id, ext } = path.parse(filename);
+
+  if (!id || (ext && ext !== ".png")) {
+    return new Response(
+      `Invalid image filename "${filename}". Expected "{videoId}.png"`,
+      { status: 400 },
+    );
+  }
+
+  const [video] = await db.select().from(Videos).where(eq(Videos.id, id));
+
+  const imageResponse = await fetch(video.thumbnail);
+
+  const image = await imageResponse.arrayBuffer();
+
+  const resized = await sharp(image)
+    .resize(IMAGE_SIZE, IMAGE_SIZE, { fit: "contain" })
+    .png()
+    .toBuffer();
+
+  return new Response(resized, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/png",
+    },
+  });
 });
 
 app.get("/rss/:username", async (c) => {

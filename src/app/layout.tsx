@@ -16,9 +16,7 @@ export function Layout({ children }) {
 
       <body
         class="bg-black text-white"
-        style={{
-          fontFamily: "JetBrains Mono",
-        }}
+        style={{ fontFamily: "JetBrains Mono" }}
       >
         {children}
       </body>

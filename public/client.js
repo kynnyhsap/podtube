@@ -11,15 +11,21 @@ const addButton = document.getElementById("add-button");
 addButton.addEventListener("click", async () => {
   addButton.innerText = "adding...";
 
-  await fetch("/extract", {
-    method: "POST",
-    body: JSON.stringify({ uri }),
-  });
+  try {
+    await fetch("/extract", {
+      method: "POST",
+      body: JSON.stringify({ uri }),
+    });
 
-  addButton.innerText = "✅ added!";
-  setTimeout(() => {
+    addButton.innerText = "✅ added!";
+
+    // reload the page
+    window.location.reload();
+  } catch (e) {
+    console.error(e);
+  } finally {
     addButton.innerText = "add";
-  }, 2000);
+  }
 });
 
 const copyButton = document.getElementById("copy-button");
